@@ -1,1 +1,70 @@
+#### 解压缩
+#!/bin/bash
 
+# 指定要遍历的文件夹路径
+DIRECTORY="/root/autodl-tmp/stable-fast-3d/342组合图"
+
+# 遍历指定目录中的所有 .zip 文件
+for zipfile in "$DIRECTORY"/*.zip; do
+    # 检查是否存在 .zip 文件
+    if [ -f "$zipfile" ]; then
+        echo "正在解压: $zipfile"
+
+        # 解压缩文件到相同的目录
+        unzip "$zipfile" -d "$DIRECTORY"
+
+        # 如果解压成功，则删除 .zip 文件
+        if [ $? -eq 0 ]; then
+            echo "解压成功，删除: $zipfile"
+            rm "$zipfile"
+        else
+            echo "解压失败: $zipfile"
+        fi
+    else
+        echo "没有找到 .zip 文件在: $DIRECTORY"
+    fi
+done
+
+
+### 遍历处理脚本
+#!/bin/bash
+
+# 定义Python脚本的位置
+SCRIPT="run.py"
+
+# 定义顶层图像文件夹的位置
+BASE_IMAGE_DIR="images/"
+
+# 定义输出文件夹的位置
+OUTPUT_DIR="output/"
+
+# 初始化计数器
+COUNT=0
+
+# 获取总的图片数量，用于显示进度
+TOTAL_IMAGES=$(find $BASE_IMAGE_DIR -type f -name "*.png" | wc -l)
+echo "Total number of images to process: $TOTAL_IMAGES"
+
+# 遍历第一层文件夹
+for SUBDIR in $BASE_IMAGE_DIR*/; do
+    # 遍历第二层文件夹中的图片
+    for IMAGE in $SUBDIR*.png; do
+        # 增加计数器
+        COUNT=$((COUNT + 1))
+
+        # 运行Python脚本
+        python3 $SCRIPT $IMAGE \
+            --device "cuda:0" \
+            --pretrained-model "stabilityai/stable-fast-3d" \
+            --foreground-ratio 0.65 \
+            --output-dir $OUTPUT_DIR \
+            --texture-resolution 1024 \
+            --remesh_option "triangle" \
+            --batch_size 1
+
+        # 显示进度
+        echo "Processed $COUNT of $TOTAL_IMAGES images."
+    done
+done
+
+echo "Processing completed for all images."
